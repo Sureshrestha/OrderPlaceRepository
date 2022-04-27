@@ -48,8 +48,7 @@ ResponseEntity<?> placeorder(@RequestHeader(required = false) HttpHeaders header
 
 @GetMapping("/order/action/get-order-status")
 ResponseEntity<?> getOrderStatus(@RequestHeader(required = false) HttpHeaders headers,
-		@RequestParam (defaultValue = "", required = true)String orderId)
-{
+		@RequestParam (defaultValue = "", required = true)String orderId) throws JsonProcessingException {
 return ResponseEntity.ok(orderService.getOrder(orderId));	
 }
 

@@ -8,6 +8,6 @@ public interface OrderService {
 	
 	Order placeOrder(CreateOrderRequest createOrderRequest) throws JsonProcessingException;
 	
-	Order getOrder(String orderId);
+	Order getOrder(String orderId) throws JsonProcessingException;
 
 }

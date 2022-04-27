@@ -2,8 +2,10 @@ package xom.apriltraining.orderplace.service.impl;
 
 import java.util.Date;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +23,8 @@ public class OrderServiceImpl implements OrderService{
 
 	
 	private OrderPlacerepository orderPlacerepository;
-	
+
+	private RedisTemplate <String, Object>redisTemplate;
 	private KafkaTemplate<String, String>kafkaTemplate;
 	
 	private ObjectMapper objectMapper;
@@ -29,9 +32,11 @@ public class OrderServiceImpl implements OrderService{
 	
 	public OrderServiceImpl(@Autowired OrderPlacerepository orderPlacerepository,
 			@Autowired KafkaTemplate<String, String>kafkaTemplate
+			, @Autowired RedisTemplate<String, Object> redisTemplate
 			, @Autowired ObjectMapper objectMapper) {
 		this.orderPlacerepository = orderPlacerepository;
 		this.kafkaTemplate = kafkaTemplate;
+		this.redisTemplate = redisTemplate;
 		this.objectMapper = objectMapper;
 	}
 	
@@ -58,14 +63,23 @@ public class OrderServiceImpl implements OrderService{
 						.timecreated(entity.getTimecreated())
 						.build();
 		kafkaTemplate.send("topic-temp",objectMapper.writeValueAsString(order));
-		return order;		
+		redisTemplate.opsForHash().put("ORDERS", order.getOrderId(),objectMapper.writeValueAsString(order));
+		redisTemplate.expire("ORDERS",10, TimeUnit.SECONDS);
+
+		return order;
 	}
 
 	@Override
-	public Order getOrder(String orderId) {
-	
-		OrderEntity entity =  orderPlacerepository.findByOrderId(orderId);
-		
+	public Order getOrder(String orderId) throws JsonProcessingException {
+		if(redisTemplate.opsForHash().hasKey("ORDERS",orderId)) {
+
+			String orderString = (String) redisTemplate.opsForHash().get("ORDERS", orderId);
+			if(orderString!=null)
+			return objectMapper.readValue(orderString, Order.class);
+
+			}
+		OrderEntity entity = orderPlacerepository.findByOrderId(orderId);
+
 		return Order.builder()
 				.orderId(entity.getOrderId())
 				.customerId(entity.getCustomerId())
